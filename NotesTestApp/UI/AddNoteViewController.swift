@@ -10,16 +10,20 @@ import UIKit
 
 class AddNoteViewController: UIViewController {
 
+    @IBOutlet var activityView: UIActivityIndicatorView!
     @IBOutlet weak var noteTextView: UITextView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        self.activityView = UIActivityIndicatorView(style: .gray)
+        self.activityView.center = self.view.center
         self.noteTextView.delegate = self
         self.setupPlaceholder()
     }
 
     @IBAction func addNewNote(_ sender: Any) {
+        self.activityView.startAnimating()
         self.requestAddNote()
     }
     
@@ -77,22 +81,13 @@ extension AddNoteViewController {
     
     private func parseResponse(data : Data) {
         do {
-            let jsonObject = try JSONSerialization.jsonObject(with: data)
+            let response = try JSONDecoder().decode(AddEntryResponse.self, from: data)
             
-            guard
-                let json = jsonObject as? [String : Any],
-                let status = json["status"] as? Int
-                else {
-                    print("Invalid json format")
-                    return
-            }
             DispatchQueue.main.async {
-                if status == 1 {
-                    //show success popup
-                    self.dismiss(animated: true, completion: nil)
+                if response.status == 1 {
+                    self.activityView.stopAnimating()
+                    self.navigationController?.popViewController(animated: true)
                 } else {
-                    let error = json["error"] as? String
-                    print(error)
                     self.showAlert(title: "Ошибка", message: "Не удалось сохранить заметку. Повторите попытку позже", retryAction: self.requestAddNote)
                 }
             }

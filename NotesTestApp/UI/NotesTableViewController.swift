@@ -92,8 +92,6 @@ extension NotesTableViewController {
                     self.showAlert(title: "Ошибка сети", message: "Проверьте свое подключение к интернету") {
                         self.requestNewSession()
                     }
-                    print((response as? HTTPURLResponse)?.statusCode)
-                    print(error.debugDescription)
                     return
             }
             self.parseNewSessionResponse(data: data)
@@ -102,24 +100,16 @@ extension NotesTableViewController {
     
     private func parseNewSessionResponse(data: Data) {
         do {
-            let jsonObject = try JSONSerialization.jsonObject(with: data)
+            let response = try JSONDecoder().decode(SessionResponse.self, from: data)
             
-            guard
-                let json = jsonObject as? [String : Any],
-                let status = json["status"] as? Int,
-                let dataValue = json["data"] as? [String:String]
-                else {
-                    print("Invalid json format")
-                    return
-            }
-            if status == 1 {
+            if response.status == 1 {
                 DispatchQueue.main.async {
                     self.activityIndicatorView.stopAnimating()
                     self.tableView.separatorStyle = .singleLine
-                    UserDefaults.standard.set(dataValue["session"], forKey: "session")
+                    UserDefaults.standard.set(response.data["session"], forKey: "session")
                 }
             } else {
-                self.showAlert(title: "Ошибка", message: "Что-то пошло не так, повторите попытку позже", retryAction: nil)
+                self.showAlert(title: "Ошибка", message: "Что-то пошло не так, повторите попытку позже", retryAction: self.requestNewSession)
             }
         } catch {
             self.showAlert(title: "Ошибка", message: "Что-то пошло не так, повторите попытку позже", retryAction: nil)
@@ -143,7 +133,6 @@ extension NotesTableViewController {
                     self.showAlert(title: "Ошибка сети", message: "Проверьте свое подключение к интернету", retryAction: self.requestEntries)
                     return
             }
-            
             self.parseGetEntriesResponse(data: data)
         }
     }
@@ -159,9 +148,11 @@ extension NotesTableViewController {
                     self.tableView.reloadData()
                     self.tableView.tableFooterView = UIView()
                 }
+            } else {
+                self.showAlert(title: "Ошибка", message: "Что-то пошло не так, повторите попытку позже", retryAction: self.requestEntries)
             }
         } catch {
-            
+            self.showAlert(title: "Ошибка", message: "Что-то пошло не так. Повторите попытку позже", retryAction: nil)
         }
     }
 }
